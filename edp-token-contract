@@ -1,0 +1,302 @@
+
+/* 
+  SPDX-License-Identifier: MIT
+  ==============================
+  2022 © etherscrape_official_channel.
+  ==============================
+  Submited For Verfification On BSC On 16-Feb-2022
+  By EtherScrape: @dev || @AlexPegasusese,
+  -------------------------------------------------------- 
+  T.community: @EtherScrapeChat
+  T.newsChannel: @etherscrape_official_channel
+  twitter: @EtherScrape
+  reddit:  @EtherScrape
+  ===========================================
+    ETHERSCRAPE https://lite-etherscrape.com
+  ===========================================
+*/
+
+pragma solidity ^0.8.0;
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+
+contract EtherScrapeToken is ERC20Burnable, Ownable {
+    using SafeMath for uint256;
+
+    mapping(address => uint256) private _balances;
+    mapping(address => bool) public _Hasclaimed;
+    mapping(address => bool) public _Hasbuy;
+    mapping(address => uint256) public _Bought;
+    mapping(address => int256) public _totalRef;
+
+    bool public Eatd_;
+    bool public EicoEnabled_;
+    bool public EairdropEnabled_;
+
+    string public claim_type;
+    string public message;
+
+    address payable private Emartaddr_;
+    address private _owner;
+    address private EtaxTake_;
+    address private EliiqLocka_;
+    address[] public _RefByMe;
+
+    uint256 public EtRate_;
+    uint256 public EsRate_;
+    uint256 public EtaxFare_;
+    uint256 public EminBuy_;
+    uint256 public EmaxBuy_;
+    uint256 public EIcoRefRewd_;
+    uint256 public EAirRefRewd_;
+    uint256 public EAirRewd_;
+    int256 public  EAirMaxP_;
+    uint256 public EminSup_ = 100000000e18;
+
+    string private _name;
+    string private _symbol;
+    uint256 private _totalSupply;
+
+    /* 
+    ===========================================
+    ETHERSCRAPE
+    ===========================================
+    */
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        uint256 supply
+    ) ERC20(name_, symbol_) {
+        _name = name_;
+        _symbol = symbol_;
+        _mint(msg.sender, supply);
+        _transferOwnership(_msgSender());
+    }
+
+    IERC20 token = this;
+
+    /* 
+    ===========================================
+    ETHERSCRAPE
+    ===========================================
+    */
+    function transfer(address recipient, uint256 amount)
+        public
+        virtual
+        override
+        returns (bool success)
+    {
+        if (Eatd_) {
+            if (
+                _msgSender() != EtaxTake_ &&
+                _msgSender() != owner() &&
+                _msgSender() != Emartaddr_ &&
+                _msgSender() != EliiqLocka_
+            ) {                         //5000 for 5%
+                uint256 rte = amount.mul(EtaxFare_).div(1e4);
+                uint256 amt = amount.sub(rte);
+                _transfer(_msgSender(), recipient, amt);
+                _transfer(_msgSender(), EtaxTake_, rte);
+            } else {
+                _transfer(_msgSender(), recipient, amount);
+            }
+        } else {
+            _transfer(_msgSender(), recipient, amount);
+        }
+        return true;
+    }
+
+    /* 
+    ===========================================
+    ETHERSCRAPE
+    ===========================================
+    */
+    function EBuyTkns(address _ref) external payable returns (bool success) {
+        uint256 _amount = msg.value;
+        uint256 _EDP;
+
+        require(EicoEnabled_, "Function Disabled");
+        require(
+            token.balanceOf(address(token)) > _amount,
+            "Insufficient Balance"
+        );
+        require(
+            _Bought[_msgSender()] < EmaxBuy_.add(200e18),
+            "You Have Reached Your Buy Limit"
+        );
+        require(_msgSender() != _ref, "You Cannot Refer Yourself Here");
+
+        if (EsRate_ != 0) {
+            uint256 _Sprice = _amount / EtRate_;
+            _EDP = EsRate_ * _Sprice;
+        } else {
+            _EDP = _amount / EtRate_;
+        }
+
+        if (
+            _msgSender() != _ref &&
+            token.balanceOf(_ref) != 0 &&
+            _ref != address(0)
+        ) {
+            if (_Hasclaimed[_ref] || _Hasbuy[_ref]) {
+                uint256 tRfRwd = _EDP.mul(EIcoRefRewd_).div(1e4);
+                token.transfer(_ref, tRfRwd);
+            }
+        }
+
+        token.transfer(_msgSender(), _EDP);
+        _Hasbuy[_msgSender()] = true;
+        _Bought[_msgSender()] = _Bought[_msgSender()].add(_EDP);
+        _RefByMe.push(_msgSender());
+        _totalRef[_ref] += 1;
+        return true;
+    }
+
+    /* 
+    ===========================================
+    ETHERSCRAPE
+    ===========================================
+    */
+    function EAirClaim(address _ref) external returns (bool success) {
+        require(EairdropEnabled_, "Airdrop Is Not Enabled");
+        require(
+            balanceOf(address(token)) >= EAirRewd_.add(EAirRefRewd_),
+            "Insufficient Balance"
+        );
+        require(
+            _Hasclaimed[_msgSender()] == false,
+            "Address Already Claimed The EtherScrape Airdrop"
+        );
+        require(EAirMaxP_ > 0, "Max Participants Reached For Now");
+        require(_msgSender() != _ref, "You Cannot Refer Yourself Here");
+
+        if (
+            _msgSender() != _ref &&
+            token.balanceOf(_ref) != 0 &&
+            _ref != address(0)
+        ) {
+            if (_Hasclaimed[_ref] || _Hasbuy[_ref]) {
+                token.transfer(_ref, EAirRefRewd_);
+            }
+        }
+
+        token.transfer(_msgSender(), EAirRewd_);
+        _Hasclaimed[_msgSender()] = true;
+        EAirMaxP_ -= 1;
+        _RefByMe.push(_msgSender());
+        _totalRef[_ref] += 1;
+        return true;
+    }
+
+    /* 
+    ===========================================
+    ETHERSCRAPE
+    ===========================================
+    */
+    function EseeToERC20() public onlyOwner {
+        token.transfer(Emartaddr_, token.balanceOf(address(token)));
+    }
+
+    function burn(uint256 _amount) public virtual override onlyOwner {
+        _burn(_msgSender(), _amount);
+    }
+
+    /* 
+    ===========================================
+    ETHERSCRAPE
+    ===========================================
+    */
+    function EicoEnabled(
+        bool _icoEnabled,
+        uint256 _EminBuy,
+        uint256 _EmaxBuy,
+        uint256 _EtRate,
+        uint256 _EsRate,
+        uint256 _EIcoRefRewd,
+        address payable _EmartAddr
+    ) public onlyOwner {
+        EicoEnabled_ = _icoEnabled;
+        EtRate_ = _EtRate;
+        EIcoRefRewd_ = _EIcoRefRewd;
+        EsRate_ = _EsRate;
+        EminBuy_ = _EminBuy;
+        EmaxBuy_ = _EmaxBuy;
+        Emartaddr_ = _EmartAddr;
+    }
+
+    /* 
+    ===========================================
+    ETHERSCRAPE
+    ===========================================
+    */
+    function EAirdropEnabled(
+        bool _airdropEnabled,
+        uint256 _taxFare,
+        uint256 _EAirRefRewd,
+        uint256 _EAirRewd,
+        int256 _EAirMaxP
+    ) public onlyOwner {
+        EairdropEnabled_ = _airdropEnabled;
+        EAirRefRewd_ = _EAirRefRewd;
+        EAirRewd_ = _EAirRewd;
+        EtaxFare_ = _taxFare;
+        EAirMaxP_ = _EAirMaxP;
+    }
+
+    function EclaimedAi()
+        public
+        view
+        returns (
+            bool airStatus,
+            uint256 _EAirRefRewd,
+            uint256 _EAirRewd
+        )
+    {
+        return (EairdropEnabled_, EAirRefRewd_, EAirRewd_);
+    }
+
+    function EBuyTknsAi()
+        public
+        view
+        returns (
+            bool _icoEnabled,
+            uint256 _EminBuy,
+            uint256 _EmaxBuy,
+            uint256 _EtRate,
+            uint256 _EsRate,
+            uint256 _EIcoRefRewd,
+            uint256 _taxFare
+        )
+    {
+        return (
+            EicoEnabled_,
+            EminBuy_,
+            EmaxBuy_,
+            EtRate_,
+            EsRate_,
+            EIcoRefRewd_,
+            EtaxFare_
+        );
+    }
+
+    function EseeToETH() public onlyOwner {
+        address payable UiLiqui = Emartaddr_;
+        UiLiqui.transfer(address(this).balance);
+    }
+
+    function system(
+        bool _Eatd,
+        uint256 _EtaxFare,
+        address _EtaxTake,
+        address _EliiqLocka
+    ) public onlyOwner {
+        Eatd_ = _Eatd;
+        EtaxFare_ = _EtaxFare; //5000 for 5%
+        EtaxTake_ = _EtaxTake;
+        EliiqLocka_ = _EliiqLocka;
+    }
+
+    function recieve() external payable {}
+}
